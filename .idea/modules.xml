@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Nibo.iml" filepath="$PROJECT_DIR$/.idea/modules/Nibo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Nibo.iml" filepath="$PROJECT_DIR$/.idea/Nibo.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/nibo_library/Nibo.nibo_library.iml" filepath="$PROJECT_DIR$/.idea/modules/nibo_library/Nibo.nibo_library.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/niboexample/Nibo.niboexample.iml" filepath="$PROJECT_DIR$/.idea/modules/niboexample/Nibo.niboexample.iml" />
     </modules>
