@@ -43,6 +43,10 @@ import android.widget.TextView;
 import com.alium.nibo.R;
 import com.alium.nibo.autocompletesearchbar.animation.BaseSupportAnimator;
 import com.alium.nibo.autocompletesearchbar.animation.ViewAnimationUtilties;
+import com.alium.nibo.di.APIModule;
+import com.alium.nibo.di.RepositoryModule;
+import com.alium.nibo.di.RetrofitModule;
+import com.alium.nibo.domain.geocoding.GeocodeAddressUseCase;
 import com.alium.nibo.placepicker.PlaceSuggestionsBuilder;
 import com.alium.nibo.repo.location.SuggestionsProvider;
 import com.jakewharton.rxbinding2.widget.RxTextView;
@@ -57,8 +61,6 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
-import io.reactivex.functions.Function;
-import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 
 
@@ -121,7 +123,13 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
     public void setmProvider(NiboAutocompleteSVProvider mProvider) {
         Log.d(TAG, "Procider has been set");
         this.mProvider = mProvider;
-        mSuggestionsProvider = new SuggestionsProvider(mProvider.getGoogleApiClient(), getContext());
+      RepositoryModule repositoryModule =
+          RepositoryModule.getInstance(APIModule.getInstance(RetrofitModule.getInstance()),
+              getContext());
+      GeocodeAddressUseCase geocodeAddressUseCase =
+          new GeocodeAddressUseCase(repositoryModule.getGeoCodingRepository());
+      mSuggestionsProvider = new SuggestionsProvider(mProvider.getPlacesClient(), getContext(),
+          geocodeAddressUseCase);
         setUpSearchView(mProvider.getShouldUseVoice());
     }
 
@@ -637,6 +645,8 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
     public void micClick() {
         if (!mIsMic) {
             setSearchString("", false);
+            mSearchListener.onSearchCleared();
+            hideProgressBar();
         } else {
             if (mVoiceRecognitionDelegate != null)
                 mVoiceRecognitionDelegate.onStartVoiceRecognition();
@@ -800,6 +810,11 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
                 @Override
                 public void accept(@NonNull Throwable throwable) throws Exception {
                     Log.d(TAG, throwable.getMessage());
+                }
+            }, () -> {
+                if (mSearchSuggestions.isEmpty()) {
+                    mSearchListener.onNoSuggestions();
+                    hideProgressBar();
                 }
             });
 
@@ -1212,6 +1227,11 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
          * Called when a suggestion is pressed is pressed
          */
         boolean onSuggestion(NiboSearchSuggestionItem niboSearchSuggestionItem);
+
+        /**
+         * Called when the search don't return any results
+         */
+        void onNoSuggestions();
 
         /**
          * Called when the clear button is pressed
