@@ -65,9 +65,10 @@ public class OriginDestinationPickerPresenter extends BaseNiboPresenter<OriginDe
     }
 
     @Override
-    public void getSuggestions(String query) {
+    public void getSuggestions(String query, String country) {
         getView().showLoading();
         findSuggestionParams.putString(NiboConstants.SUGGESTION_QUERY_PARAM, query);
+        findSuggestionParams.putString(NiboConstants.SUGGESTION_COUNTRY_QUERY_PARAM, country);
         getPlaceSuggestionsUseCase.execute(new SuggestionsObserver(), findSuggestionParams);
     }
 

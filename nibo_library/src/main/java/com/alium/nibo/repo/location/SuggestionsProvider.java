@@ -9,13 +9,13 @@ import com.alium.nibo.autocompletesearchbar.NiboSearchSuggestionItem;
 import com.alium.nibo.repo.contracts.ISuggestionRepository;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.location.places.AutocompleteFilter;
 import com.google.android.gms.location.places.AutocompletePrediction;
 import com.google.android.gms.location.places.AutocompletePredictionBuffer;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.PlaceBuffer;
 import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.model.LatLng;
-
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,7 +43,7 @@ public class SuggestionsProvider implements ISuggestionRepository {
         this.mContext = mContext;
     }
 
-    public Observable<Collection<NiboSearchSuggestionItem>> getSuggestions(final String query) {
+    public Observable<Collection<NiboSearchSuggestionItem>> getSuggestions(final String query, final String country) {
         final List<NiboSearchSuggestionItem> placeSuggestionItems = new ArrayList<>();
 
         if (mGoogleApiClient == null) {
@@ -53,7 +53,8 @@ public class SuggestionsProvider implements ISuggestionRepository {
         return new Observable<Collection<NiboSearchSuggestionItem>>() {
             @Override
             protected void subscribeActual(final Observer<? super Collection<NiboSearchSuggestionItem>> observer) {
-                Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, query, null, null)
+                Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, query, null,
+                        country != null ? new AutocompleteFilter.Builder().setCountry(country).build() : null)
                         .setResultCallback(
                                 new ResultCallback<AutocompletePredictionBuffer>() {
                                     @Override

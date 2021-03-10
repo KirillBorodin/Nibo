@@ -47,7 +47,6 @@ import com.alium.nibo.placepicker.PlaceSuggestionsBuilder;
 import com.alium.nibo.repo.location.SuggestionsProvider;
 import com.jakewharton.rxbinding2.widget.RxTextView;
 
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
@@ -117,12 +116,17 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
     private NiboAutocompleteSVProvider mProvider;
     private PlaceSuggestionsBuilder mSamplesSuggestionsBuilder;
     private SuggestionsProvider mSuggestionsProvider;
+    private String countryCode;
 
     public void setmProvider(NiboAutocompleteSVProvider mProvider) {
         Log.d(TAG, "Procider has been set");
         this.mProvider = mProvider;
         mSuggestionsProvider = new SuggestionsProvider(mProvider.getGoogleApiClient(), getContext());
         setUpSearchView(mProvider.getShouldUseVoice());
+    }
+
+    public void restrictCountry(String countryCode) {
+        this.countryCode = countryCode;
     }
 
     @Override
@@ -739,7 +743,7 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
     private void buildSearchSuggestions(String query) {
         showProgressBar();
         if (mSuggestionBuilder != null) {
-            mSuggestionBuilder.rXbuildSearchSuggestion(10, query).subscribe(new Consumer<Collection<NiboSearchSuggestionItem>>() {
+            mSuggestionBuilder.rXbuildSearchSuggestion(10, query, countryCode).subscribe(new Consumer<Collection<NiboSearchSuggestionItem>>() {
                 @Override
                 public void accept(@NonNull Collection<NiboSearchSuggestionItem> niboSearchSuggestionItems) throws Exception {
                     hideProgressBar();
@@ -761,7 +765,7 @@ public class NiboPlacesAutoCompleteSearchView extends RevealViewGroup {
 
         } else {
             Log.e(TAG, "SearchSuggestionsBuilder is null");
-            if(mProvider==null){
+            if (mProvider == null) {
                 throw new IllegalStateException("Please implement NiboAutocompleteSVProvider in the host fragment or activity and set it on your instance of NiboAutoCompleteSearchView");
             }
         }

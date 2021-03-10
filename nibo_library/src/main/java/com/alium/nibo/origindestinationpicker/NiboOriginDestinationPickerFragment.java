@@ -27,7 +27,6 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.alium.nibo.R;
 import com.alium.nibo.autocompletesearchbar.NiboSearchSuggestionItem;
@@ -57,7 +56,6 @@ import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
@@ -105,7 +103,7 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
     private int mTextFieldClearIconRes;
     private int mPrimaryPolyLineColor;
     private int mSecondaryPolyLineColor;
-
+    private String countryCode;
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
@@ -135,6 +133,7 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
             mPrimaryPolyLineColor = args.getInt(NiboConstants.PRIMARY_POLY_LINE_COLOR_RES);
             mSecondaryPolyLineColor = args.getInt(NiboConstants.SECONDARY_POLY_LINE_COLOR_RES);
 
+            countryCode = args.getString(NiboConstants.COUNTRY_CODE_ARG);
         }
 
         if (mOriginEditTextHint != null) {
@@ -161,7 +160,7 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
 
     public static NiboOriginDestinationPickerFragment newInstance(String originEditTextHint, String destinationEditTextHint, NiboStyle mapStyle,
                                                                   int styleFileID, int originMarkerPinIconRes, int destinationMarkerPinIconRes, int backButtonIconRes,
-                                                                  int textFieldClearIconRes, int primaryPolyLineColor, int secondaryPolyLineColor) {
+                                                                  int textFieldClearIconRes, int primaryPolyLineColor, int secondaryPolyLineColor, String countryCode) {
 
         Bundle args = new Bundle();
         args.putString(NiboConstants.ORIGIN_EDIT_TEXT_HINT_ARG, originEditTextHint);
@@ -176,6 +175,7 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
 
         args.putInt(NiboConstants.PRIMARY_POLY_LINE_COLOR_RES, primaryPolyLineColor);
         args.putInt(NiboConstants.SECONDARY_POLY_LINE_COLOR_RES, secondaryPolyLineColor);
+        args.putString(NiboConstants.COUNTRY_CODE_ARG, countryCode);
 
         NiboOriginDestinationPickerFragment fragment = new NiboOriginDestinationPickerFragment();
         fragment.setArguments(args);
@@ -443,29 +443,23 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
 
         originObservable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String>() {
-                    @Override
-                    public void accept(@io.reactivex.annotations.NonNull String s) throws Exception {
-                        if (mBehavior.getState() == BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED) {
-                            mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_ANCHOR_POINT);
-                        }
-                        mDestinationEditText.setFocusableInTouchMode(false);
-                        findResults(s);
+                .subscribe(s -> {
+                    if (mBehavior.getState() == BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED) {
+                        mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_ANCHOR_POINT);
                     }
+                    mDestinationEditText.setFocusableInTouchMode(false);
+                    findResults(s);
                 });
 
         destinationObservable.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String>() {
-                    @Override
-                    public void accept(@io.reactivex.annotations.NonNull String s) throws Exception {
-                        if (mBehavior.getState() == BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED) {
-                            mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_ANCHOR_POINT);
-                        }
-                        mOriginEditText.setFocusableInTouchMode(false);
-                        findResults(s);
-
+                .subscribe(s -> {
+                    if (mBehavior.getState() == BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED) {
+                        mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_ANCHOR_POINT);
                     }
+                    mOriginEditText.setFocusableInTouchMode(false);
+                    findResults(s);
+
                 });
 
         mSuggestionsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -583,18 +577,15 @@ public class NiboOriginDestinationPickerFragment extends BaseNiboFragment<Origin
 
     @Override
     public void closeSuggestions() {
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                hideKeyboard();
-                mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED);
-                mCoordinatorlayout.requestLayout();
-            }
+        getActivity().runOnUiThread(() -> {
+            hideKeyboard();
+            mBehavior.setState(BottomSheetBehaviorGoogleMapsLike.STATE_COLLAPSED);
+            mCoordinatorlayout.requestLayout();
         });
     }
 
     private void findResults(String s) {
-        presenter.getSuggestions(s);
+        presenter.getSuggestions(s, countryCode);
     }
 
 

@@ -13,7 +13,7 @@ import io.reactivex.Observable;
 
 public interface ISuggestionRepository {
 
-    Observable<Collection<NiboSearchSuggestionItem>> getSuggestions(final String query);
+    Observable<Collection<NiboSearchSuggestionItem>> getSuggestions(final String query, final String country);
 
     Observable<Place> getPlaceByID(final String placeId);
 
