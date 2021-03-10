@@ -20,6 +20,8 @@ public class GetPlaceSuggestionsUseCase extends BaseUseCase {
 
     @Override
     protected Observable getObservable(Params params) {
-        return suggestionRepository.getSuggestions(params.getString(NiboConstants.SUGGESTION_QUERY_PARAM, null));
+        return suggestionRepository.getSuggestions(
+                params.getString(NiboConstants.SUGGESTION_QUERY_PARAM, null),
+                params.getString(NiboConstants.SUGGESTION_COUNTRY_QUERY_PARAM, null));
     }
 }
