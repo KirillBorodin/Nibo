@@ -42,6 +42,8 @@ public class NiboOriginDestinationPickerActivity extends BaseNiboActivity {
         private String originEditTextHint;
         private String destinationEditTextHint;
         private NiboStyle styleEnum;
+        private String countryCode;
+
         private
         @RawRes
         int styleFileID;
@@ -111,9 +113,13 @@ public class NiboOriginDestinationPickerActivity extends BaseNiboActivity {
             return this;
         }
 
+        public void restrictCountry(String countryCode) {
+            this.countryCode = countryCode;
+        }
+
         public NiboOriginDestinationPickerFragment build() {
             return NiboOriginDestinationPickerFragment.newInstance(originEditTextHint, destinationEditTextHint, styleEnum, styleFileID, originMarkerPinIconRes, destinationMarkerPinIconRes,
-                    backButtonIconRes, textFieldClearIconRes, primaryPolyLineColor, secondaryPolyLineColor);
+                    backButtonIconRes, textFieldClearIconRes, primaryPolyLineColor, secondaryPolyLineColor, countryCode);
         }
 
     }

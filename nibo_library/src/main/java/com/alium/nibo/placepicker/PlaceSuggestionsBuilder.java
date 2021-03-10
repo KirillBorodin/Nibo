@@ -29,7 +29,7 @@ public class PlaceSuggestionsBuilder implements SearchSuggestionsBuilder {
 
 
     @Override
-    public Observable<Collection<NiboSearchSuggestionItem>> rXbuildSearchSuggestion(int maxCount, final String query) {
-        return suggestionsProvider.getSuggestions(query);
+    public Observable<Collection<NiboSearchSuggestionItem>> rXbuildSearchSuggestion(int maxCount, final String query, final String country) {
+        return suggestionsProvider.getSuggestions(query, country);
     }
 }

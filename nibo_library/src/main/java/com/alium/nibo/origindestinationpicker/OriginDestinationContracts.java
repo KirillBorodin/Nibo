@@ -20,7 +20,7 @@ public interface OriginDestinationContracts {
 
         void findDirections(double origLatitude, double origLongitude, double destLatitude, double destLongitude);
 
-        void getSuggestions(String query);
+        void getSuggestions(String query, String country);
 
         void onRouteFinderSuccess(List<Route> routes);
 
