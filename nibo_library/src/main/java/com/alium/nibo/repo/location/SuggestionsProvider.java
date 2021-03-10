@@ -1,30 +1,31 @@
 package com.alium.nibo.repo.location;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
+import android.location.Address;
 import android.util.Log;
 
 import com.alium.nibo.R;
 import com.alium.nibo.autocompletesearchbar.NiboSearchSuggestionItem;
+import com.alium.nibo.domain.Params;
+import com.alium.nibo.domain.geocoding.GeocodeAddressUseCase;
 import com.alium.nibo.repo.contracts.ISuggestionRepository;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.location.places.AutocompleteFilter;
-import com.google.android.gms.location.places.AutocompletePrediction;
-import com.google.android.gms.location.places.AutocompletePredictionBuffer;
-import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.PlaceBuffer;
-import com.google.android.gms.location.places.Places;
+import com.alium.nibo.utils.NiboConstants;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.libraries.places.api.model.AutocompletePrediction;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.api.net.FetchPlaceRequest;
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest;
+import com.google.android.libraries.places.api.net.PlacesClient;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
 import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
 /**
@@ -35,57 +36,100 @@ public class SuggestionsProvider implements ISuggestionRepository {
 
 
     private String TAG = getClass().getSimpleName();
-    private GoogleApiClient mGoogleApiClient;
+    private PlacesClient placesClient;
+    private GeocodeAddressUseCase geocodeAddressUseCase;
     private Context mContext;
 
-    public SuggestionsProvider(GoogleApiClient mGoogleApiClient, Context mContext) {
-        this.mGoogleApiClient = mGoogleApiClient;
+    public SuggestionsProvider(PlacesClient placesClient, Context mContext,
+                               GeocodeAddressUseCase geocodeAddressUseCase) {
+        this.placesClient = placesClient;
         this.mContext = mContext;
+        this.geocodeAddressUseCase = geocodeAddressUseCase;
     }
 
     public Observable<Collection<NiboSearchSuggestionItem>> getSuggestions(final String query, final String country) {
         final List<NiboSearchSuggestionItem> placeSuggestionItems = new ArrayList<>();
-
-        if (mGoogleApiClient == null) {
-            Log.d(TAG, "Google play services cannot be null");
-        }
-
         return new Observable<Collection<NiboSearchSuggestionItem>>() {
             @Override
             protected void subscribeActual(final Observer<? super Collection<NiboSearchSuggestionItem>> observer) {
-                Places.GeoDataApi.getAutocompletePredictions(mGoogleApiClient, query, null,
-                        country != null ? new AutocompleteFilter.Builder().setCountry(country).build() : null)
-                        .setResultCallback(
-                                new ResultCallback<AutocompletePredictionBuffer>() {
-                                    @Override
-                                    public void onResult(@NonNull AutocompletePredictionBuffer buffer) {
-                                        placeSuggestionItems.clear();
-                                        if (buffer.getStatus().isSuccess()) {
-                                            Log.d(TAG, buffer.toString() + " " + buffer.getCount());
+                FindAutocompletePredictionsRequest findAutocompletePredictionsRequest;
 
-                                            for (AutocompletePrediction prediction : buffer) {
-                                                Log.d(TAG, prediction.getFullText(null).toString());
-                                                //Add as a new item to avoid IllegalArgumentsException when buffer is released
-                                                NiboSearchSuggestionItem placeSuggestion = new NiboSearchSuggestionItem(
-                                                        prediction.getFullText(null).toString(),
-                                                        prediction.getPlaceId(), NiboSearchSuggestionItem.TYPE_SEARCH_ITEM_SUGGESTION,
-                                                        mContext.getResources().getDrawable(R.drawable.ic_map_marker_def)
-                                                );
-
-                                                placeSuggestionItems.add(placeSuggestion);
+                if (country != null) {
+                    findAutocompletePredictionsRequest = FindAutocompletePredictionsRequest.builder()
+                            .setQuery(query)
+                            .setCountry(country)
+                            .build();
+                } else {
+                    findAutocompletePredictionsRequest = FindAutocompletePredictionsRequest.builder()
+                            .setQuery(query)
+                            .build();
+                }
+                placesClient.findAutocompletePredictions(findAutocompletePredictionsRequest).addOnSuccessListener(response -> {
+                    placeSuggestionItems.clear();
+                    List<AutocompletePrediction> autocompletePredictions =
+                            response.getAutocompletePredictions();
+                    if (autocompletePredictions.isEmpty()) {
+                        Params params = Params.create();
+                        params.putData(NiboConstants.ADDRESS_PARAM, query);
+                        geocodeAddressUseCase.execute(new DisposableObserver<List<Address>>() {
+                            @Override
+                            public void onNext(List<Address> addresses) {
+                                if (addresses != null && !addresses.isEmpty()) {
+                                    for (Address address : addresses) {
+                                        String result = null;
+                                        StringBuilder sb = new StringBuilder();
+                                        for (int i = 0; i <= address.getMaxAddressLineIndex(); i++) {
+                                            sb.append(address.getAddressLine(i));
+                                            if (i != address.getMaxAddressLineIndex()) {
+                                                sb.append(", ");
                                             }
-
-                                            observer.onNext(placeSuggestionItems);
-
-                                        } else {
-                                            Log.d(TAG, buffer.toString());
-                                            observer.onError(new Throwable(buffer.getStatus().getStatusMessage()));
                                         }
-                                        //Prevent memory leak by releasing buffer
-                                        buffer.release();
+                                        result = sb.toString();
+                                        Log.d(TAG, "geocodeAddressUseCase: onNext: " + result);
+                                        NiboSearchSuggestionItem placeSuggestion =
+                                                new NiboSearchSuggestionItem(
+                                                        result,
+                                                        result,
+                                                        NiboSearchSuggestionItem.TYPE_SEARCH_ITEM_SUGGESTION,
+                                                        mContext.getResources()
+                                                                .getDrawable(R.drawable.ic_map_marker_def),
+                                                        new LatLng(address.getLatitude(), address.getLongitude())
+                                                );
+                                        placeSuggestionItems.add(placeSuggestion);
                                     }
-                                }, 60, TimeUnit.SECONDS);
+                                    observer.onNext(placeSuggestionItems);
+                                } else {
+                                    observer.onComplete();
+                                }
 
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                observer.onError(new Throwable(e.getMessage()));
+                            }
+
+                            @Override
+                            public void onComplete() {
+
+                            }
+                        }, params);
+                    } else {
+                        for (AutocompletePrediction autocompletePrediction : autocompletePredictions) {
+                            NiboSearchSuggestionItem placeSuggestion =
+                                    new NiboSearchSuggestionItem(
+                                            autocompletePrediction.getFullText(null).toString(),
+                                            autocompletePrediction.getPlaceId(),
+                                            NiboSearchSuggestionItem.TYPE_SEARCH_ITEM_SUGGESTION,
+                                            mContext.getResources()
+                                                    .getDrawable(R.drawable.ic_map_marker_def)
+                                    );
+
+                            placeSuggestionItems.add(placeSuggestion);
+                        }
+                        observer.onNext(placeSuggestionItems);
+                    }
+                }).addOnFailureListener(e -> observer.onError(new Throwable(e.getMessage())));
             }
         };
     }
@@ -95,23 +139,16 @@ public class SuggestionsProvider implements ISuggestionRepository {
         return new Observable<Place>() {
             @Override
             protected void subscribeActual(final Observer<? super Place> observer) {
-                Places.GeoDataApi.getPlaceById(mGoogleApiClient, placeId)
-                        .setResultCallback(new ResultCallback<PlaceBuffer>() {
-                            @Override
-                            public void onResult(@NonNull PlaceBuffer places) {
-                                if (places.getStatus().isSuccess()) {
-                                    final Place thatPlace = places.get(0);
-                                    LatLng queriedLocation = thatPlace.getLatLng();
-                                    Log.v("Latitude is", "" + queriedLocation.latitude);
-                                    Log.v("Longitude is", "" + queriedLocation.longitude);
-
-                                    observer.onNext(thatPlace.freeze());
-                                } else {
-
-                                }
-                                places.release();
-                            }
-                        });
+                FetchPlaceRequest fetchPlaceRequest =
+                        FetchPlaceRequest.builder(placeId, Arrays.asList(Place.Field.ID, Place.Field.NAME, Place.Field.LAT_LNG))
+                                .build();
+                placesClient.fetchPlace(fetchPlaceRequest).addOnSuccessListener(result -> {
+                    Place place = result.getPlace();
+                    LatLng queriedLocation = place.getLatLng();
+                    Log.v("Latitude is", "" + queriedLocation.latitude);
+                    Log.v("Longitude is", "" + queriedLocation.longitude);
+                    observer.onNext(place);
+                });
             }
         }.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
@@ -120,8 +157,5 @@ public class SuggestionsProvider implements ISuggestionRepository {
     @Override
     public void stop() {
         mContext = null;
-        mGoogleApiClient = null;
     }
-
-
 }
